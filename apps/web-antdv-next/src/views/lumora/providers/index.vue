@@ -2,7 +2,7 @@
 import type { VxeGridProps } from '#/adapter/vxe-table';
 import type { AdminProvider } from '#/api';
 
-import { onMounted, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
@@ -74,30 +74,36 @@ const gridOptions: VxeGridProps<AdminProvider> = {
       width: 160,
     },
   ],
-  data: [],
   height: 'auto',
-  pagerConfig: { enabled: false },
+  pagerConfig: { pageSize: 10 },
+  proxyConfig: {
+    ajax: {
+      query: async ({ page }) => {
+        error.value = '';
+        try {
+          const { items } = await getProvidersApi();
+          const start = (page.currentPage - 1) * page.pageSize;
+          return {
+            items: items.slice(start, start + page.pageSize),
+            total: items.length,
+          };
+        } catch (loadError) {
+          error.value =
+            loadError instanceof Error
+              ? loadError.message
+              : '服务配置加载失败';
+          throw loadError;
+        }
+      },
+    },
+  },
   rowConfig: { height: 56, keyField: 'id' },
-  toolbarConfig: { custom: true, refresh: false, zoom: true },
+  toolbarConfig: { custom: true, refresh: true, zoom: true },
 };
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions,
-  tableTitle: '服务列表',
 });
-
-async function load() {
-  gridApi.setLoading(true);
-  error.value = '';
-  try {
-    gridApi.setGridOptions({ data: (await getProvidersApi()).items });
-  } catch (loadError) {
-    error.value =
-      loadError instanceof Error ? loadError.message : '服务配置加载失败';
-  } finally {
-    gridApi.setLoading(false);
-  }
-}
 
 function openCreate() {
   Object.assign(form, { apiKey: '', baseUrl: '', name: '' });
@@ -123,7 +129,7 @@ async function save() {
     });
     formOpen.value = false;
     message.success('服务配置已添加');
-    await load();
+    await gridApi.query();
   } catch (saveError) {
     error.value =
       saveError instanceof Error ? saveError.message : '服务配置保存失败';
@@ -139,7 +145,7 @@ async function activate(id: string) {
   try {
     await activateProviderApi(id);
     message.success('当前服务已切换');
-    await load();
+    await gridApi.query();
   } catch (actionError) {
     error.value =
       actionError instanceof Error ? actionError.message : '服务切换失败';
@@ -155,7 +161,7 @@ async function remove(id: string) {
   try {
     await deleteProviderApi(id);
     message.success('服务配置已删除');
-    await load();
+    await gridApi.query();
   } catch (actionError) {
     error.value =
       actionError instanceof Error ? actionError.message : '服务配置删除失败';
@@ -163,41 +169,38 @@ async function remove(id: string) {
     actionId.value = '';
   }
 }
-
-onMounted(load);
 </script>
 
 <template>
   <Page auto-content-height>
     <Alert v-if="error" class="mb-4" :message="error" show-icon type="error" />
     <Grid>
-      <template #toolbar-tools>
-        <Space>
-          <Button @click="load">刷新</Button>
-          <Button type="primary" @click="openCreate">新增服务</Button>
-        </Space>
+      <template #toolbar-actions>
+        <Button type="primary" class="font-semibold shadow-sm" @click="openCreate">新增服务集群</Button>
       </template>
       <template #name="{ row }">
-        <strong>{{ row.name }}</strong>
-        <div class="text-xs text-gray-500">{{ row.model }}</div>
+        <div class="font-bold text-slate-800 text-sm">{{ row.name }}</div>
+        <div class="text-xs text-indigo-600 font-mono font-semibold">{{ row.model }}</div>
       </template>
       <template #apiKey="{ row }">
-        {{ row.maskedApiKey }}
-        <Tag v-if="row.needsRotation" class="ml-2" color="warning">
-          需更新
+        <span class="font-mono text-xs text-slate-600">{{ row.maskedApiKey }}</span>
+        <Tag v-if="row.needsRotation" class="ml-2 font-semibold" color="warning">
+          需更新 Key
         </Tag>
       </template>
       <template #status="{ row }">
-        <Tag :color="row.isActive ? 'success' : 'default'">
-          {{ row.isActive ? '使用中' : '未启用' }}
+        <Tag :color="row.isActive ? 'success' : 'default'" class="rounded-full px-2.5 font-semibold">
+          {{ row.isActive ? '运行中' : '未启用' }}
         </Tag>
       </template>
       <template #createdAt="{ row }">
-        {{
-          new Date(row.createdAt).toLocaleString('zh-CN', {
-            hour12: false,
-          })
-        }}
+        <div class="text-xs font-mono text-slate-500">
+          {{
+            new Date(row.createdAt).toLocaleString('zh-CN', {
+              hour12: false,
+            })
+          }}
+        </div>
       </template>
       <template #actions="{ row }">
         <Space>
@@ -205,6 +208,8 @@ onMounted(load);
             :disabled="row.isActive || Boolean(actionId)"
             :loading="actionId === row.id && !row.isActive"
             size="small"
+            type="link"
+            class="font-medium"
             @click="activate(row.id)"
           >
             启用
@@ -220,6 +225,8 @@ onMounted(load);
               :disabled="Boolean(actionId)"
               :loading="actionId === row.id"
               size="small"
+              type="link"
+              class="font-medium"
             >
               删除
             </Button>

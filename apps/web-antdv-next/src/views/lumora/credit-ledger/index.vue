@@ -16,6 +16,10 @@ const total = ref(0);
 const error = ref('');
 
 const formOptions: VbenFormProps = {
+  actionButtonsReverse: true,
+  actionLayout: 'inline',
+  layout: 'horizontal',
+  resetButtonOptions: { content: '重置' },
   schema: [
     {
       component: 'Input',
@@ -25,7 +29,7 @@ const formOptions: VbenFormProps = {
     },
   ],
   showCollapseButton: false,
-  submitButtonOptions: { content: '查询' },
+  submitButtonOptions: { content: '搜索' },
   submitOnEnter: true,
 };
 
@@ -66,7 +70,7 @@ const gridOptions: VxeGridProps<CreditLedgerItem> = {
     },
   ],
   height: 'auto',
-  pagerConfig: { pageSize: 30 },
+  pagerConfig: { pageSize: 10 },
   proxyConfig: {
     ajax: {
       query: async ({ page }, formValues) => {
@@ -94,7 +98,6 @@ const gridOptions: VxeGridProps<CreditLedgerItem> = {
 const [Grid] = useVbenVxeGrid({
   formOptions,
   gridOptions,
-  tableTitle: '积分明细',
 });
 </script>
 
@@ -103,30 +106,36 @@ const [Grid] = useVbenVxeGrid({
     <Alert v-if="error" class="mb-4" :message="error" show-icon type="error" />
     <Grid>
       <template #toolbar-tools>
-        <span class="text-sm text-gray-500">共 {{ total }} 条</span>
+        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 shadow-sm">
+          共 {{ total }} 条变动纪录
+        </span>
       </template>
       <template #user="{ row }">
-        <strong>{{ row.userEmail }}</strong>
-        <div class="text-xs text-gray-500">{{ row.userId }}</div>
+        <div class="font-bold text-slate-800 text-xs font-mono">{{ row.userEmail }}</div>
+        <div class="text-[11px] text-slate-400 font-mono">{{ row.userId }}</div>
       </template>
       <template #delta="{ row }">
-        <Tag :color="row.delta > 0 ? 'success' : 'error'">
-          {{ row.delta > 0 ? '+' : '' }}{{ row.delta }}
+        <Tag :color="row.delta > 0 ? 'success' : 'error'" class="font-mono font-bold px-2 py-0.5 rounded text-xs">
+          {{ row.delta > 0 ? '+' : '' }}{{ row.delta.toLocaleString() }}
         </Tag>
       </template>
       <template #reason="{ row }">
-        {{ row.reason }}
-        <div class="text-xs text-gray-500">{{ row.referenceId }}</div>
+        <div class="font-medium text-slate-700 text-xs">{{ row.reason }}</div>
+        <div class="text-[11px] text-slate-400 font-mono">{{ row.referenceId }}</div>
       </template>
       <template #operator="{ row }">
-        {{ row.operatorEmail || '系统' }}
+        <span class="text-xs font-medium" :class="row.operatorEmail ? 'text-indigo-600' : 'text-slate-500'">
+          {{ row.operatorEmail || '系统自动处理' }}
+        </span>
       </template>
       <template #createdAt="{ row }">
-        {{
-          new Date(row.createdAt).toLocaleString('zh-CN', {
-            hour12: false,
-          })
-        }}
+        <div class="text-xs font-mono text-slate-500">
+          {{
+            new Date(row.createdAt).toLocaleString('zh-CN', {
+              hour12: false,
+            })
+          }}
+        </div>
       </template>
     </Grid>
   </Page>

@@ -21,6 +21,10 @@ const statusOptions = [
 ];
 
 const formOptions: VbenFormProps = {
+  actionButtonsReverse: true,
+  actionLayout: 'inline',
+  layout: 'horizontal',
+  resetButtonOptions: { content: '重置' },
   schema: [
     {
       component: 'Input',
@@ -43,7 +47,7 @@ const formOptions: VbenFormProps = {
     },
   ],
   showCollapseButton: false,
-  submitButtonOptions: { content: '查询' },
+  submitButtonOptions: { content: '搜索' },
   submitOnEnter: true,
 };
 
@@ -90,7 +94,7 @@ const gridOptions: VxeGridProps<UsageLogItem> = {
     },
   ],
   height: 'auto',
-  pagerConfig: { pageSize: 30 },
+  pagerConfig: { pageSize: 10 },
   proxyConfig: {
     ajax: {
       query: async ({ page }, formValues) => {
@@ -119,7 +123,6 @@ const gridOptions: VxeGridProps<UsageLogItem> = {
 const [Grid] = useVbenVxeGrid({
   formOptions,
   gridOptions,
-  tableTitle: '调用记录',
 });
 </script>
 
@@ -128,43 +131,48 @@ const [Grid] = useVbenVxeGrid({
     <Alert v-if="error" class="mb-4" :message="error" show-icon type="error" />
     <Grid>
       <template #toolbar-tools>
-        <span class="text-sm text-gray-500">共 {{ total }} 条</span>
+        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-purple-700 shadow-sm">
+          共 {{ total }} 条接口日志记录
+        </span>
       </template>
       <template #user="{ row }">
-        <strong>{{ row.userEmail }}</strong>
-        <div class="text-xs text-gray-500">{{ row.userId }}</div>
+        <div class="font-bold text-slate-800 text-xs font-mono">{{ row.userEmail }}</div>
+        <div class="text-[11px] text-slate-400 font-mono">{{ row.userId }}</div>
       </template>
       <template #call="{ row }">
-        {{ row.endpoint }}
-        <div class="text-xs text-gray-500">
-          {{ row.providerName || '未记录服务' }} · {{ row.model }}
+        <div class="font-mono text-indigo-600 font-semibold text-xs">{{ row.endpoint }}</div>
+        <div class="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+          <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-medium">{{ row.providerName || '默认服务' }}</span>
+          <span>·</span>
+          <span class="text-indigo-700 font-medium">{{ row.model }}</span>
         </div>
       </template>
       <template #status="{ row }">
-        <Tag :color="row.status === 'success' ? 'success' : 'error'">
-          {{ row.status === 'success' ? '成功' : '失败' }}
+        <Tag :color="row.status === 'success' ? 'success' : 'error'" class="rounded-full px-2 font-bold">
+          {{ row.status === 'success' ? 'SUCCESS' : 'FAILED' }}
         </Tag>
       </template>
       <template #usage="{ row }">
-        {{ row.durationMs }} ms
-        <div class="text-xs text-gray-500">{{ row.creditsUsed }} 积分</div>
+        <div class="font-mono text-xs font-bold" :class="row.durationMs > 5000 ? 'text-amber-600' : 'text-emerald-600'">
+          {{ row.durationMs }} ms
+        </div>
+        <div class="text-[11px] text-amber-600 font-medium">{{ row.creditsUsed }} 积分</div>
       </template>
       <template #network="{ row }">
-        {{ row.ipAddress || '-' }}
-        <div class="text-xs text-gray-500">
-          {{ row.platform || row.userAgent || '未知设备' }}
+        <div class="font-mono text-xs text-slate-700">{{ row.ipAddress || '-' }}</div>
+        <div class="text-[11px] text-slate-400">
+          {{ row.platform || row.userAgent || '未知客户端' }}
           {{ row.appVersion ? ` · v${row.appVersion}` : '' }}
-        </div>
-        <div v-if="row.deviceId" class="text-xs text-gray-500">
-          {{ row.deviceId }}
         </div>
       </template>
       <template #createdAt="{ row }">
-        {{
-          new Date(row.createdAt).toLocaleString('zh-CN', {
-            hour12: false,
-          })
-        }}
+        <div class="text-xs font-mono text-slate-500">
+          {{
+            new Date(row.createdAt).toLocaleString('zh-CN', {
+              hour12: false,
+            })
+          }}
+        </div>
       </template>
     </Grid>
   </Page>

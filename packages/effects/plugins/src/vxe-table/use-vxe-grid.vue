@@ -222,25 +222,18 @@ const options = computed(() => {
   }
 
   if (mergedOptions.pagerConfig) {
-    const mobileLayouts = [
-      'PrevJump',
-      'PrevPage',
-      'Number',
-      'NextPage',
-      'NextJump',
-    ] as any;
+    const mobileLayouts = ['PrevPage', 'Number', 'NextPage'] as any;
     const layouts = [
       'Total',
-      'Sizes',
-      'Home',
       ...mobileLayouts,
-      'End',
+      'Sizes',
+      'FullJump',
     ] as readonly string[];
     mergedOptions.pagerConfig = mergeWithArrayOverride(
       {},
       mergedOptions.pagerConfig,
       {
-        pageSize: 20,
+        pageSize: 10,
         background: true,
         pageSizes: [10, 20, 30, 50, 100, 200],
         className: 'mt-2 w-full',

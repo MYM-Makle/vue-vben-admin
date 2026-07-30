@@ -17,7 +17,7 @@ export default defineConfig(async ({ command }) => {
         proxy: {
           '/api': {
             changeOrigin: true,
-            target: 'http://127.0.0.1:8790',
+            target: 'https://makle.cloud',
           },
         },
       },

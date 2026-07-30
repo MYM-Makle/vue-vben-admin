@@ -6,7 +6,7 @@ import type {
   AnnouncementType,
 } from '#/api';
 
-import { onMounted, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
@@ -93,30 +93,34 @@ const gridOptions: VxeGridProps<AdminAnnouncement> = {
       width: 150,
     },
   ],
-  data: [],
   height: 'auto',
-  pagerConfig: { enabled: false },
+  pagerConfig: { pageSize: 10 },
+  proxyConfig: {
+    ajax: {
+      query: async ({ page }) => {
+        error.value = '';
+        try {
+          const { items } = await getAnnouncementsApi();
+          const start = (page.currentPage - 1) * page.pageSize;
+          return {
+            items: items.slice(start, start + page.pageSize),
+            total: items.length,
+          };
+        } catch (loadError) {
+          error.value =
+            loadError instanceof Error ? loadError.message : '公告列表加载失败';
+          throw loadError;
+        }
+      },
+    },
+  },
   rowConfig: { height: 64, keyField: 'id' },
-  toolbarConfig: { custom: true, refresh: false, zoom: true },
+  toolbarConfig: { custom: true, refresh: true, zoom: true },
 };
 
 const [Grid, gridApi] = useVbenVxeGrid({
   gridOptions,
-  tableTitle: '公告列表',
 });
-
-async function load() {
-  gridApi.setLoading(true);
-  error.value = '';
-  try {
-    gridApi.setGridOptions({ data: (await getAnnouncementsApi()).items });
-  } catch (loadError) {
-    error.value =
-      loadError instanceof Error ? loadError.message : '公告列表加载失败';
-  } finally {
-    gridApi.setLoading(false);
-  }
-}
 
 function openCreate() {
   editingId.value = '';
@@ -166,7 +170,7 @@ async function save() {
     }
     formOpen.value = false;
     message.success('公告已保存');
-    await load();
+    await gridApi.query();
   } catch (saveError) {
     error.value =
       saveError instanceof Error ? saveError.message : '公告保存失败';
@@ -182,7 +186,7 @@ async function remove(id: string) {
   try {
     await deleteAnnouncementApi(id);
     message.success('公告已删除');
-    await load();
+    await gridApi.query();
   } catch (deleteError) {
     error.value =
       deleteError instanceof Error ? deleteError.message : '公告删除失败';
@@ -190,38 +194,33 @@ async function remove(id: string) {
     deletingId.value = '';
   }
 }
-
-onMounted(load);
 </script>
 
 <template>
   <Page auto-content-height>
     <Alert v-if="error" class="mb-4" :message="error" show-icon type="error" />
     <Grid>
-      <template #toolbar-tools>
-        <Space>
-          <Button @click="load">刷新</Button>
-          <Button type="primary" @click="openCreate">发布公告</Button>
-        </Space>
+      <template #toolbar-actions>
+        <Button type="primary" class="font-semibold shadow-sm" @click="openCreate">发布公告</Button>
       </template>
       <template #title="{ row }">
-        <strong>{{ row.title }}</strong>
-        <div class="mt-1 max-w-2xl text-xs text-gray-500">
+        <div class="font-bold text-slate-800 text-sm">{{ row.title }}</div>
+        <div class="mt-1 max-w-2xl text-xs text-slate-600">
           {{ row.content }}
         </div>
       </template>
       <template #type="{ row }">
-        <Tag :color="typeColors[row.type]">
+        <Tag :color="typeColors[row.type]" class="rounded-full px-2.5 font-semibold">
           {{ typeLabels[row.type] }}
         </Tag>
       </template>
       <template #isNew="{ row }">
-        <Tag v-if="row.isNew" color="processing">最新</Tag>
-        <span v-else>-</span>
+        <Tag v-if="row.isNew" color="processing" class="rounded-full font-semibold">最新</Tag>
+        <span v-else class="text-slate-400 text-xs">-</span>
       </template>
       <template #actions="{ row }">
         <Space>
-          <Button size="small" @click="openEdit(row)">编辑</Button>
+          <Button size="small" type="link" class="font-medium" @click="openEdit(row)">编辑</Button>
           <Popconfirm
             cancel-text="取消"
             ok-text="删除"
@@ -233,6 +232,8 @@ onMounted(load);
               :disabled="Boolean(deletingId)"
               :loading="deletingId === row.id"
               size="small"
+              type="link"
+              class="font-medium"
             >
               删除
             </Button>

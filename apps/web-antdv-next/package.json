@@ -44,7 +44,11 @@
     "antdv-next": "catalog:",
     "dayjs": "catalog:",
     "pinia": "catalog:",
+    "three": "^0.185.1",
     "vue": "catalog:",
     "vue-router": "catalog:"
+  },
+  "devDependencies": {
+    "@types/three": "^0.185.1"
   }
 }

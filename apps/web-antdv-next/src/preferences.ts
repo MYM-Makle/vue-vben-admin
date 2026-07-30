@@ -20,4 +20,10 @@ export const overridesPreferences = defineOverridesPreferences({
   copyright: {
     enable: false,
   },
+  theme: {
+    mode: 'light',
+    semiDarkHeader: false,
+    semiDarkSidebar: false,
+    semiDarkSidebarSub: false,
+  },
 });

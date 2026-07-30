@@ -46,6 +46,10 @@ const statusOptions = [
 ];
 
 const formOptions: VbenFormProps = {
+  actionButtonsReverse: true,
+  actionLayout: 'inline',
+  layout: 'horizontal',
+  resetButtonOptions: { content: '重置' },
   schema: [
     {
       component: 'Input',
@@ -68,7 +72,7 @@ const formOptions: VbenFormProps = {
     },
   ],
   showCollapseButton: false,
-  submitButtonOptions: { content: '查询' },
+  submitButtonOptions: { content: '搜索' },
   submitOnEnter: true,
 };
 
@@ -119,7 +123,7 @@ const gridOptions: VxeGridProps<ManagedUser> = {
     },
   ],
   height: 'auto',
-  pagerConfig: { pageSize: 20 },
+  pagerConfig: { pageSize: 10 },
   proxyConfig: {
     ajax: {
       query: async ({ page }, formValues) => {
@@ -148,7 +152,6 @@ const gridOptions: VxeGridProps<ManagedUser> = {
 const [Grid, gridApi] = useVbenVxeGrid({
   formOptions,
   gridOptions,
-  tableTitle: '用户列表',
 });
 
 function openSettings(user: ManagedUser) {
@@ -206,44 +209,56 @@ async function saveCredits() {
     <Alert v-if="error" class="mb-4" :message="error" show-icon type="error" />
     <Grid>
       <template #toolbar-tools>
-        <span class="text-sm text-gray-500">共 {{ total }} 个账号</span>
+        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 shadow-sm">
+          共 {{ total }} 个用户账号
+        </span>
       </template>
       <template #user="{ row }">
-        <strong>{{ row.name }}</strong>
-        <div class="text-xs text-gray-500">
-          {{ row.email }}{{ row.isAdmin ? ' · 管理员' : '' }}
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+            {{ row.name ? row.name.charAt(0).toUpperCase() : 'U' }}
+          </div>
+          <div>
+            <div class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+              {{ row.name }}
+              <Tag v-if="row.isAdmin" color="purple" class="text-[10px] px-1.5 py-0 border-0 bg-purple-100 text-purple-700 font-semibold rounded">管理员</Tag>
+            </div>
+            <div class="text-xs text-slate-500 font-mono">{{ row.email }}</div>
+          </div>
         </div>
       </template>
       <template #status="{ row }">
-        <Tag :color="row.status === 'active' ? 'success' : 'error'">
-          {{ row.status === 'active' ? '正常' : '停用' }}
+        <Tag :color="row.status === 'active' ? 'success' : 'error'" class="rounded-full px-2.5 font-semibold">
+          {{ row.status === 'active' ? '正常' : '已停用' }}
         </Tag>
       </template>
       <template #plan="{ row }">
-        {{ row.plan }}
-        <div class="text-xs text-gray-500">日限额 {{ row.dailyLimit }}</div>
+        <div class="font-semibold text-slate-700">{{ row.plan }}</div>
+        <div class="text-xs text-slate-500">每日限额 {{ row.dailyLimit.toLocaleString() }}</div>
       </template>
       <template #credits="{ row }">
-        {{ row.credits.toLocaleString() }}
-        <div class="text-xs text-gray-500">预扣 {{ row.creditsReserved }}</div>
+        <div class="font-bold text-indigo-600 font-mono">{{ row.credits.toLocaleString() }} <span class="text-xs text-slate-500 font-normal">积分</span></div>
+        <div class="text-xs text-slate-400">预扣 {{ row.creditsReserved }}</div>
       </template>
       <template #usage="{ row }">
-        {{ row.totalCalls }} 次
-        <div class="text-xs text-gray-500">消耗 {{ row.creditsUsed }}</div>
+        <div class="font-semibold text-emerald-600">{{ row.totalCalls }} <span class="text-xs text-slate-500 font-normal">次</span></div>
+        <div class="text-xs text-slate-500">消耗 {{ row.creditsUsed }} 积分</div>
       </template>
       <template #lastSeenAt="{ row }">
-        {{
-          row.lastSeenAt
-            ? new Date(row.lastSeenAt).toLocaleString('zh-CN', {
-                hour12: false,
-              })
-            : '从未'
-        }}
+        <div class="text-xs font-mono text-slate-500">
+          {{
+            row.lastSeenAt
+              ? new Date(row.lastSeenAt).toLocaleString('zh-CN', {
+                  hour12: false,
+                })
+              : '从未活跃'
+          }}
+        </div>
       </template>
       <template #actions="{ row }">
         <Space>
-          <Button size="small" @click="openCredits(row)">积分</Button>
-          <Button size="small" @click="openSettings(row)">设置</Button>
+          <Button size="small" type="link" class="font-medium" @click="openCredits(row)">积分</Button>
+          <Button size="small" type="link" class="font-medium" @click="openSettings(row)">设置</Button>
         </Space>
       </template>
     </Grid>
