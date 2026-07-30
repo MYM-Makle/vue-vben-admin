@@ -1,7 +1,9 @@
 <script lang="ts" setup>
+import type { VbenFormProps } from '#/adapter/form';
+import type { VxeGridProps } from '#/adapter/vxe-table';
 import type { ManagedUser } from '#/api';
 
-import { onMounted, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
@@ -14,23 +16,16 @@ import {
   InputNumber,
   message,
   Modal,
-  Pagination,
   Select,
   Space,
   Switch,
-  Table,
   Tag,
 } from 'antdv-next';
 
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { adjustCreditsApi, getUsersApi, updateUserApi } from '#/api';
 
-const users = ref<ManagedUser[]>([]);
 const total = ref(0);
-const page = ref(1);
-const pageSize = 20;
-const query = ref('');
-const status = ref('');
-const loading = ref(false);
 const saving = ref(false);
 const error = ref('');
 const selected = ref<ManagedUser>();
@@ -44,45 +39,116 @@ const settings = reactive({
 });
 const creditForm = reactive({ delta: null as null | number, reason: '' });
 
-const columns = [
-  { key: 'user', title: '用户' },
-  { key: 'status', title: '状态', width: 90 },
-  { key: 'plan', title: '套餐' },
-  { key: 'credits', title: '积分' },
-  { key: 'usage', title: '使用量' },
-  { key: 'lastSeenAt', title: '最后活跃' },
-  { fixed: 'right' as const, key: 'actions', title: '操作', width: 150 },
-];
-
 const statusOptions = [
   { label: '全部状态', value: '' },
   { label: '正常', value: 'active' },
   { label: '已停用', value: 'disabled' },
 ];
 
-async function load() {
-  loading.value = true;
-  error.value = '';
-  try {
-    const result = await getUsersApi({
-      page: page.value,
-      pageSize,
-      q: query.value || undefined,
-      status: status.value || undefined,
-    });
-    users.value = result.items;
-    total.value = result.total;
-  } catch (error) {
-    error.value = error instanceof Error ? error.message : '用户列表加载失败';
-  } finally {
-    loading.value = false;
-  }
-}
+const formOptions: VbenFormProps = {
+  schema: [
+    {
+      component: 'Input',
+      componentProps: {
+        allowClear: true,
+        placeholder: '搜索邮箱或昵称',
+      },
+      fieldName: 'q',
+      label: '用户',
+    },
+    {
+      component: 'Select',
+      componentProps: {
+        allowClear: true,
+        options: statusOptions.slice(1),
+        placeholder: '全部状态',
+      },
+      fieldName: 'status',
+      label: '状态',
+    },
+  ],
+  showCollapseButton: false,
+  submitButtonOptions: { content: '查询' },
+  submitOnEnter: true,
+};
 
-function search() {
-  page.value = 1;
-  void load();
-}
+const gridOptions: VxeGridProps<ManagedUser> = {
+  columns: [
+    {
+      align: 'left',
+      field: 'name',
+      minWidth: 220,
+      slots: { default: 'user' },
+      title: '用户',
+    },
+    {
+      field: 'status',
+      slots: { default: 'status' },
+      title: '状态',
+      width: 90,
+    },
+    {
+      field: 'plan',
+      minWidth: 130,
+      slots: { default: 'plan' },
+      title: '套餐',
+    },
+    {
+      field: 'credits',
+      minWidth: 130,
+      slots: { default: 'credits' },
+      title: '积分',
+    },
+    {
+      field: 'totalCalls',
+      minWidth: 130,
+      slots: { default: 'usage' },
+      title: '使用量',
+    },
+    {
+      field: 'lastSeenAt',
+      minWidth: 180,
+      slots: { default: 'lastSeenAt' },
+      title: '最后活跃',
+    },
+    {
+      fixed: 'right',
+      slots: { default: 'actions' },
+      title: '操作',
+      width: 150,
+    },
+  ],
+  pagerConfig: { pageSize: 20 },
+  proxyConfig: {
+    ajax: {
+      query: async ({ page }, formValues) => {
+        error.value = '';
+        try {
+          const result = await getUsersApi({
+            page: page.currentPage,
+            pageSize: page.pageSize,
+            q: String(formValues.q ?? '').trim() || undefined,
+            status: String(formValues.status ?? '') || undefined,
+          });
+          total.value = result.total;
+          return result;
+        } catch (loadError) {
+          error.value =
+            loadError instanceof Error ? loadError.message : '用户列表加载失败';
+          throw loadError;
+        }
+      },
+    },
+  },
+  rowConfig: { keyField: 'id' },
+  toolbarConfig: { custom: true, refresh: true },
+};
+
+const [Grid, gridApi] = useVbenVxeGrid({
+  formOptions,
+  gridOptions,
+  tableTitle: '用户列表',
+});
 
 function openSettings(user: ManagedUser) {
   selected.value = user;
@@ -108,7 +174,7 @@ async function saveSettings() {
     await updateUserApi(selected.value.id, settings);
     settingsOpen.value = false;
     message.success('用户设置已保存');
-    await load();
+    await gridApi.query();
   } finally {
     saving.value = false;
   }
@@ -127,97 +193,59 @@ async function saveCredits() {
     });
     creditsOpen.value = false;
     message.success('积分已调整');
-    await load();
+    await gridApi.query();
   } finally {
     saving.value = false;
   }
 }
-
-onMounted(load);
 </script>
 
 <template>
-  <Page description="管理账号状态、套餐、每日限额与积分" title="用户管理">
+  <Page title="用户管理">
     <Alert v-if="error" class="mb-4" :message="error" show-icon type="error" />
-    <div class="mb-4 flex flex-wrap items-center gap-2">
-      <Input
-        v-model:value="query"
-        class="w-72"
-        allow-clear
-        placeholder="搜索邮箱或昵称"
-        @press-enter="search"
-      />
-      <Select
-        v-model:value="status"
-        class="w-32"
-        :options="statusOptions"
-        @change="search"
-      />
-      <Button :loading="loading" type="primary" @click="search">查询</Button>
-      <span class="ml-auto text-sm text-gray-500">共 {{ total }} 个账号</span>
-    </div>
-    <Table
-      :columns="columns"
-      :data-source="users"
-      :loading="loading"
-      :pagination="false"
-      :row-key="(row: ManagedUser) => row.id"
-      :scroll="{ x: 1100 }"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'user'">
-          <strong>{{ record.name }}</strong>
-          <div class="text-xs text-gray-500">
-            {{ record.email }}{{ record.isAdmin ? ' · 管理员' : '' }}
-          </div>
-        </template>
-        <template v-else-if="column.key === 'status'">
-          <Tag :color="record.status === 'active' ? 'success' : 'error'">
-            {{ record.status === 'active' ? '正常' : '停用' }}
-          </Tag>
-        </template>
-        <template v-else-if="column.key === 'plan'">
-          {{ record.plan }}
-          <div class="text-xs text-gray-500">
-            日限额 {{ record.dailyLimit }}
-          </div>
-        </template>
-        <template v-else-if="column.key === 'credits'">
-          {{ record.credits.toLocaleString() }}
-          <div class="text-xs text-gray-500">
-            预扣 {{ record.creditsReserved }}
-          </div>
-        </template>
-        <template v-else-if="column.key === 'usage'">
-          {{ record.totalCalls }} 次
-          <div class="text-xs text-gray-500">消耗 {{ record.creditsUsed }}</div>
-        </template>
-        <template v-else-if="column.key === 'lastSeenAt'">
-          {{
-            record.lastSeenAt
-              ? new Date(record.lastSeenAt).toLocaleString('zh-CN', {
-                  hour12: false,
-                })
-              : '从未'
-          }}
-        </template>
-        <template v-else-if="column.key === 'actions'">
-          <Space>
-            <Button size="small" @click="openCredits(record)">积分</Button>
-            <Button size="small" @click="openSettings(record)">设置</Button>
-          </Space>
-        </template>
+    <Grid>
+      <template #toolbar-tools>
+        <span class="text-sm text-gray-500">共 {{ total }} 个账号</span>
       </template>
-    </Table>
-    <div class="mt-4 flex justify-end">
-      <Pagination
-        v-model:current="page"
-        :page-size="pageSize"
-        :show-size-changer="false"
-        :total="total"
-        @change="load"
-      />
-    </div>
+      <template #user="{ row }">
+        <strong>{{ row.name }}</strong>
+        <div class="text-xs text-gray-500">
+          {{ row.email }}{{ row.isAdmin ? ' · 管理员' : '' }}
+        </div>
+      </template>
+      <template #status="{ row }">
+        <Tag :color="row.status === 'active' ? 'success' : 'error'">
+          {{ row.status === 'active' ? '正常' : '停用' }}
+        </Tag>
+      </template>
+      <template #plan="{ row }">
+        {{ row.plan }}
+        <div class="text-xs text-gray-500">日限额 {{ row.dailyLimit }}</div>
+      </template>
+      <template #credits="{ row }">
+        {{ row.credits.toLocaleString() }}
+        <div class="text-xs text-gray-500">预扣 {{ row.creditsReserved }}</div>
+      </template>
+      <template #usage="{ row }">
+        {{ row.totalCalls }} 次
+        <div class="text-xs text-gray-500">消耗 {{ row.creditsUsed }}</div>
+      </template>
+      <template #lastSeenAt="{ row }">
+        {{
+          row.lastSeenAt
+            ? new Date(row.lastSeenAt).toLocaleString('zh-CN', {
+                hour12: false,
+              })
+            : '从未'
+        }}
+      </template>
+      <template #actions="{ row }">
+        <Space>
+          <Button size="small" @click="openCredits(row)">积分</Button>
+          <Button size="small" @click="openSettings(row)">设置</Button>
+        </Space>
+      </template>
+    </Grid>
 
     <Modal
       v-model:open="settingsOpen"

@@ -39,6 +39,65 @@ export interface ManagedUser {
   totalCalls: number;
 }
 
+export interface CreditLedgerItem {
+  balanceAfter: number;
+  createdAt: string;
+  delta: number;
+  id: string;
+  operatorEmail: null | string;
+  reason: string;
+  referenceId: string;
+  userEmail: string;
+  userId: string;
+}
+
+export interface UsageLogItem {
+  appVersion: string;
+  createdAt: string;
+  creditsUsed: number;
+  deviceId: string;
+  durationMs: number;
+  endpoint: string;
+  id: string;
+  ipAddress: string;
+  model: string;
+  platform: string;
+  providerName: string;
+  status: 'error' | 'success';
+  userAgent: string;
+  userEmail: string;
+  userId: string;
+}
+
+export interface SystemSettings {
+  defaultDailyLimit: number;
+  registrationCredits: number;
+}
+
+export interface AdminProvider {
+  baseUrl: string;
+  createdAt: string;
+  id: string;
+  isActive: boolean;
+  maskedApiKey: string;
+  model: string;
+  name: string;
+  needsRotation: boolean;
+}
+
+export type AnnouncementType = 'feature' | 'system' | 'update';
+
+export interface AdminAnnouncement {
+  content: string;
+  date: string;
+  id: string;
+  isNew: boolean;
+  title: string;
+  type: AnnouncementType;
+}
+
+export type AnnouncementPayload = Omit<AdminAnnouncement, 'id'>;
+
 export interface PagedResult<T> {
   items: T[];
   page: number;
@@ -75,5 +134,80 @@ export function adjustCreditsApi(
   return requestClient.post<{ credits: number }>(
     `/admin/users/${encodeURIComponent(id)}/credits`,
     data,
+  );
+}
+
+export function getCreditLedgerApi(params: {
+  page: number;
+  pageSize: number;
+  userId?: string;
+}) {
+  return requestClient.get<PagedResult<CreditLedgerItem>>(
+    '/admin/credit-ledger',
+    { params },
+  );
+}
+
+export function getUsageLogsApi(params: {
+  page: number;
+  pageSize: number;
+  q?: string;
+  status?: string;
+}) {
+  return requestClient.get<PagedResult<UsageLogItem>>('/admin/usage-logs', {
+    params,
+  });
+}
+
+export function getSettingsApi() {
+  return requestClient.get<SystemSettings>('/admin/settings');
+}
+
+export function updateSettingsApi(data: SystemSettings) {
+  return requestClient.put<null>('/admin/settings', data);
+}
+
+export function getProvidersApi() {
+  return requestClient.get<{ items: AdminProvider[] }>('/admin/providers');
+}
+
+export function createProviderApi(data: {
+  apiKey: string;
+  baseUrl: string;
+  name: string;
+}) {
+  return requestClient.post<AdminProvider>('/admin/providers', data);
+}
+
+export function activateProviderApi(id: string) {
+  return requestClient.put<null>(
+    `/admin/providers/${encodeURIComponent(id)}/activate`,
+  );
+}
+
+export function deleteProviderApi(id: string) {
+  return requestClient.delete<null>(
+    `/admin/providers/${encodeURIComponent(id)}`,
+  );
+}
+
+export function getAnnouncementsApi() {
+  return requestClient.get<{ items: AdminAnnouncement[] }>('/announcements');
+}
+
+export function createAnnouncementApi(data: AnnouncementPayload) {
+  return requestClient.post<{ id: string }>('/admin/announcements', data);
+}
+
+export function updateAnnouncementApi(id: string, data: AnnouncementPayload) {
+  return requestClient.put<null>(
+    `/admin/announcements/${encodeURIComponent(id)}`,
+    data,
+  );
+}
+
+export function deleteAnnouncementApi(id: string) {
+  return requestClient.delete<null>(
+    `/admin/announcements/${encodeURIComponent(id)}`,
   );
 }

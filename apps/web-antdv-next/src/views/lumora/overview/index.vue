@@ -45,7 +45,7 @@ const metrics = computed(() => {
     ],
     ['生成成功率', `${overview.value.successRate.toFixed(1)}%`, '全部生成请求'],
     ['累计消耗积分', overview.value.creditsUsed, '已完成结算'],
-    ['图片记录', overview.value.totalImages, '服务器本地存储'],
+    ['图片记录', overview.value.totalImages, '全部图片元数据'],
   ] as const;
 });
 
@@ -62,8 +62,9 @@ async function load() {
   error.value = '';
   try {
     overview.value = await getOverviewApi();
-  } catch (error) {
-    error.value = error instanceof Error ? error.message : '运营数据加载失败';
+  } catch (loadError) {
+    error.value =
+      loadError instanceof Error ? loadError.message : '运营数据加载失败';
   } finally {
     loading.value = false;
   }
@@ -73,10 +74,7 @@ onMounted(load);
 </script>
 
 <template>
-  <Page
-    description="账号、活跃、积分与生成数据均来自服务器 SQLite"
-    title="运营概览"
-  >
+  <Page title="运营工作台">
     <template #extra>
       <Button :loading="loading" @click="load">
         <IconifyIcon icon="lucide:refresh-cw" />
