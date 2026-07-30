@@ -94,9 +94,10 @@ const gridOptions: VxeGridProps<AdminAnnouncement> = {
     },
   ],
   data: [],
+  height: 'auto',
   pagerConfig: { enabled: false },
-  rowConfig: { keyField: 'id' },
-  toolbarConfig: { custom: true, refresh: false },
+  rowConfig: { height: 64, keyField: 'id' },
+  toolbarConfig: { custom: true, refresh: false, zoom: true },
 };
 
 const [Grid, gridApi] = useVbenVxeGrid({
@@ -194,15 +195,14 @@ onMounted(load);
 </script>
 
 <template>
-  <Page title="公告管理">
-    <template #extra>
-      <Button type="primary" @click="openCreate">发布公告</Button>
-    </template>
-
+  <Page auto-content-height>
     <Alert v-if="error" class="mb-4" :message="error" show-icon type="error" />
     <Grid>
       <template #toolbar-tools>
-        <Button @click="load">刷新</Button>
+        <Space>
+          <Button @click="load">刷新</Button>
+          <Button type="primary" @click="openCreate">发布公告</Button>
+        </Space>
       </template>
       <template #title="{ row }">
         <strong>{{ row.title }}</strong>

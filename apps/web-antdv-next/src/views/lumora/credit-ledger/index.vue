@@ -65,6 +65,7 @@ const gridOptions: VxeGridProps<CreditLedgerItem> = {
       width: 180,
     },
   ],
+  height: 'auto',
   pagerConfig: { pageSize: 30 },
   proxyConfig: {
     ajax: {
@@ -86,8 +87,8 @@ const gridOptions: VxeGridProps<CreditLedgerItem> = {
       },
     },
   },
-  rowConfig: { keyField: 'id' },
-  toolbarConfig: { custom: true, refresh: true },
+  rowConfig: { height: 56, keyField: 'id' },
+  toolbarConfig: { custom: true, refresh: true, zoom: true },
 };
 
 const [Grid] = useVbenVxeGrid({
@@ -98,7 +99,7 @@ const [Grid] = useVbenVxeGrid({
 </script>
 
 <template>
-  <Page title="积分流水">
+  <Page auto-content-height>
     <Alert v-if="error" class="mb-4" :message="error" show-icon type="error" />
     <Grid>
       <template #toolbar-tools>

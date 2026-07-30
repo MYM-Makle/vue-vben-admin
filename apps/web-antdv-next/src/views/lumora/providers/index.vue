@@ -75,9 +75,10 @@ const gridOptions: VxeGridProps<AdminProvider> = {
     },
   ],
   data: [],
+  height: 'auto',
   pagerConfig: { enabled: false },
-  rowConfig: { keyField: 'id' },
-  toolbarConfig: { custom: true, refresh: false },
+  rowConfig: { height: 56, keyField: 'id' },
+  toolbarConfig: { custom: true, refresh: false, zoom: true },
 };
 
 const [Grid, gridApi] = useVbenVxeGrid({
@@ -167,15 +168,14 @@ onMounted(load);
 </script>
 
 <template>
-  <Page title="服务配置">
-    <template #extra>
-      <Button type="primary" @click="openCreate">新增服务</Button>
-    </template>
-
+  <Page auto-content-height>
     <Alert v-if="error" class="mb-4" :message="error" show-icon type="error" />
     <Grid>
       <template #toolbar-tools>
-        <Button @click="load">刷新</Button>
+        <Space>
+          <Button @click="load">刷新</Button>
+          <Button type="primary" @click="openCreate">新增服务</Button>
+        </Space>
       </template>
       <template #name="{ row }">
         <strong>{{ row.name }}</strong>

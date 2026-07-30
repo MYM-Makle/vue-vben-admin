@@ -118,6 +118,7 @@ const gridOptions: VxeGridProps<ManagedUser> = {
       width: 150,
     },
   ],
+  height: 'auto',
   pagerConfig: { pageSize: 20 },
   proxyConfig: {
     ajax: {
@@ -140,8 +141,8 @@ const gridOptions: VxeGridProps<ManagedUser> = {
       },
     },
   },
-  rowConfig: { keyField: 'id' },
-  toolbarConfig: { custom: true, refresh: true },
+  rowConfig: { height: 56, keyField: 'id' },
+  toolbarConfig: { custom: true, refresh: true, zoom: true },
 };
 
 const [Grid, gridApi] = useVbenVxeGrid({
@@ -201,7 +202,7 @@ async function saveCredits() {
 </script>
 
 <template>
-  <Page title="用户管理">
+  <Page auto-content-height>
     <Alert v-if="error" class="mb-4" :message="error" show-icon type="error" />
     <Grid>
       <template #toolbar-tools>
