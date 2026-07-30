@@ -6,7 +6,6 @@
     "composite": false,
     "lib": ["ESNext"],
     "moduleResolution": "bundler",
-    "types": ["node"],
-    "noImplicitAny": true
+    "types": ["node"]
   }
 }

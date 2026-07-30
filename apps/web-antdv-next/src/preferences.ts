@@ -11,7 +11,14 @@ import {
 export const overridesPreferences = defineOverridesPreferences({
   // overrides
   app: {
-    name: import.meta.env.VITE_APP_TITLE,
+    accessMode: 'frontend',
+    defaultHomePath: '/overview',
+    enableRefreshToken: false,
+    layout: 'sidebar-nav',
+    name: 'Lumora 管理后台',
+  },
+  breadcrumb: {
+    enable: false,
   },
   copyright: appCopyrightPreferences,
 });
