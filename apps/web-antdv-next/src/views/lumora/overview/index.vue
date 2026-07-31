@@ -6,7 +6,7 @@ import * as THREE from 'three';
 
 import { Page } from '@vben/common-ui';
 import { IconifyIcon } from '@vben/icons';
-import { Alert, Spin } from 'antdv-next';
+import { Alert, Image, Spin } from 'antdv-next';
 
 import { getOverviewApi, getProvidersApi, getUsageLogsApi } from '#/api';
 
@@ -778,7 +778,8 @@ onUnmounted(() => {
                 <div class="log-stream-feed flex-1 overflow-y-auto my-2 pr-1">
                   <div v-if="usageLogs.length > 0" class="log-scroll-track">
                     <div v-for="loop in 2" :key="loop" class="logs-list" :aria-hidden="loop === 2">
-                      <div v-for="log in usageLogs" :key="log.id" class="log-item-row">
+                      <div v-for="log in usageLogs" :key="log.id" class="log-item-row" :class="{ 'has-image': log.imageUrl }">
+                        <Image v-if="log.imageUrl" :height="44" :src="log.imageUrl" :width="44" class="log-image" />
                         <div class="log-item-header">
                           <span class="log-user">{{ log.userEmail || '匿名用户' }}</span>
                           <span class="log-status-tag" :class="log.status">
@@ -1633,6 +1634,7 @@ onUnmounted(() => {
 }
 
 .log-item-row {
+  position: relative;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.04);
   padding: 8px 10px;
@@ -1641,6 +1643,20 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 3px;
   transition: background-color 0.2s;
+}
+
+.log-item-row.has-image {
+  min-height: 62px;
+  padding-left: 62px;
+}
+
+.log-image {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  border-radius: 4px;
+  object-fit: cover;
+  transform: translateY(-50%);
 }
 
 .log-item-row:hover {

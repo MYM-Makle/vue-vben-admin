@@ -1,19 +1,35 @@
 <script lang="ts" setup>
 import type { VbenFormProps } from '#/adapter/form';
 import type { VxeGridProps } from '#/adapter/vxe-table';
-import type { UsageLogItem } from '#/api';
+import type { IpLocationResult, UsageLogItem } from '#/api';
 
 import { ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
 
-import { Alert, Tag } from 'antdv-next';
+import { Alert, Button, Image, Tag } from 'antdv-next';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
-import { getUsageLogsApi } from '#/api';
+import { getIpLocationApi, getUsageLogsApi } from '#/api';
 
 const total = ref(0);
 const error = ref('');
+const ipLocations = ref<Record<string, IpLocationResult>>({});
+const locatingIps = ref<Record<string, boolean>>({});
+
+async function loadIpLocation(ip: string) {
+  if (!ip || locatingIps.value[ip]) return;
+  locatingIps.value = { ...locatingIps.value, [ip]: true };
+  try {
+    const result = await getIpLocationApi(ip);
+    ipLocations.value = { ...ipLocations.value, [ip]: result };
+  } catch (locationError) {
+    error.value =
+      locationError instanceof Error ? locationError.message : 'IP 地区查询失败';
+  } finally {
+    locatingIps.value = { ...locatingIps.value, [ip]: false };
+  }
+}
 
 const statusOptions = [
   { label: '成功', value: 'success' },
@@ -54,6 +70,12 @@ const formOptions: VbenFormProps = {
 const gridOptions: VxeGridProps<UsageLogItem> = {
   columns: [
     {
+      field: 'imageUrl',
+      slots: { default: 'image' },
+      title: '图片',
+      width: 84,
+    },
+    {
       align: 'left',
       field: 'userEmail',
       minWidth: 220,
@@ -84,7 +106,7 @@ const gridOptions: VxeGridProps<UsageLogItem> = {
       field: 'ipAddress',
       minWidth: 260,
       slots: { default: 'network' },
-      title: 'IP / 设备',
+      title: 'IP / 客户端',
     },
     {
       field: 'createdAt',
@@ -116,7 +138,7 @@ const gridOptions: VxeGridProps<UsageLogItem> = {
       },
     },
   },
-  rowConfig: { height: 64, keyField: 'id' },
+  rowConfig: { height: 72, keyField: 'id' },
   toolbarConfig: { custom: true, refresh: true, zoom: true },
 };
 
@@ -135,9 +157,18 @@ const [Grid] = useVbenVxeGrid({
           共 {{ total }} 条接口日志记录
         </span>
       </template>
+      <template #image="{ row }">
+        <Image
+          v-if="row.imageUrl"
+          :height="52"
+          :src="row.imageUrl"
+          :width="52"
+          class="rounded object-cover"
+        />
+        <span v-else class="text-xs text-slate-300">-</span>
+      </template>
       <template #user="{ row }">
         <div class="font-bold text-slate-800 text-xs font-mono">{{ row.userEmail }}</div>
-        <div class="text-[11px] text-slate-400 font-mono">{{ row.userId }}</div>
       </template>
       <template #call="{ row }">
         <div class="font-mono text-indigo-600 font-semibold text-xs">{{ row.endpoint }}</div>
@@ -160,6 +191,22 @@ const [Grid] = useVbenVxeGrid({
       </template>
       <template #network="{ row }">
         <div class="font-mono text-xs text-slate-700">{{ row.ipAddress || '-' }}</div>
+        <div v-if="ipLocations[row.ipAddress]" class="mt-0.5 text-[11px] text-cyan-700">
+          {{ ipLocations[row.ipAddress]?.location }}
+          <span v-if="ipLocations[row.ipAddress]?.isp" class="text-slate-400">
+            · {{ ipLocations[row.ipAddress]?.isp }}
+          </span>
+        </div>
+        <Button
+          v-else-if="row.ipAddress"
+          class="h-auto p-0 text-[11px]"
+          :loading="locatingIps[row.ipAddress]"
+          size="small"
+          type="link"
+          @click="loadIpLocation(row.ipAddress)"
+        >
+          获取地区
+        </Button>
         <div class="text-[11px] text-slate-400">
           {{ row.platform || row.userAgent || '未知客户端' }}
           {{ row.appVersion ? ` · v${row.appVersion}` : '' }}

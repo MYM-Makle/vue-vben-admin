@@ -59,6 +59,7 @@ export interface UsageLogItem {
   durationMs: number;
   endpoint: string;
   id: string;
+  imageUrl: null | string;
   ipAddress: string;
   model: string;
   platform: string;
@@ -67,6 +68,13 @@ export interface UsageLogItem {
   userAgent: string;
   userEmail: string;
   userId: string;
+}
+
+export interface IpLocationResult {
+  cached: boolean;
+  ip: string;
+  isp: string;
+  location: string;
 }
 
 export interface SystemSettings {
@@ -156,6 +164,12 @@ export function getUsageLogsApi(params: {
 }) {
   return requestClient.get<PagedResult<UsageLogItem>>('/admin/usage-logs', {
     params,
+  });
+}
+
+export function getIpLocationApi(ip: string) {
+  return requestClient.get<IpLocationResult>('/admin/ip-location', {
+    params: { ip },
   });
 }
 
