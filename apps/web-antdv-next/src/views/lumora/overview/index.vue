@@ -776,21 +776,23 @@ onUnmounted(() => {
 
                 <!-- Log Stream Feed -->
                 <div class="log-stream-feed flex-1 overflow-y-auto my-2 pr-1">
-                  <div v-if="usageLogs.length > 0" class="logs-list">
-                    <div v-for="log in usageLogs" :key="log.id" class="log-item-row">
-                      <div class="log-item-header">
-                        <span class="log-user">{{ log.userEmail || '匿名用户' }}</span>
-                        <span class="log-status-tag" :class="log.status">
-                          {{ log.status === 'success' ? 'SUCCESS' : 'FAIL' }}
-                        </span>
-                      </div>
-                      <div class="log-item-details">
-                        <span class="log-endpoint">{{ log.endpoint }}</span>
-                        <span class="log-time">{{ new Date(log.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }}</span>
-                      </div>
-                      <div class="log-item-footer">
-                        <span class="log-meta text-slate-500">{{ log.model || 'Flux' }} · {{ log.durationMs }}ms</span>
-                        <span class="log-credits text-amber-500 font-semibold">-{{ log.creditsUsed }} 积分</span>
+                  <div v-if="usageLogs.length > 0" class="log-scroll-track">
+                    <div v-for="loop in 2" :key="loop" class="logs-list" :aria-hidden="loop === 2">
+                      <div v-for="log in usageLogs" :key="log.id" class="log-item-row">
+                        <div class="log-item-header">
+                          <span class="log-user">{{ log.userEmail || '匿名用户' }}</span>
+                          <span class="log-status-tag" :class="log.status">
+                            {{ log.status === 'success' ? 'SUCCESS' : 'FAIL' }}
+                          </span>
+                        </div>
+                        <div class="log-item-details">
+                          <span class="log-endpoint">{{ log.endpoint }}</span>
+                          <span class="log-time">{{ new Date(log.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }}</span>
+                        </div>
+                        <div class="log-item-footer">
+                          <span class="log-meta text-slate-500">{{ log.model || 'Flux' }} · {{ log.durationMs }}ms</span>
+                          <span class="log-credits text-amber-500 font-semibold">-{{ log.creditsUsed }} 积分</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -880,7 +882,7 @@ onUnmounted(() => {
 .bigscreen-container {
   width: 100%;
   height: 100%;
-  min-height: calc(100vh - 70px);
+  min-height: 0;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1602,14 +1604,32 @@ onUnmounted(() => {
 
 /* RIGHT PANEL: LOG FEED */
 .log-stream-feed {
-  max-height: 200px;
+  min-height: 0;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.log-stream-feed::-webkit-scrollbar {
+  display: none;
 }
 
 .logs-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.log-scroll-track {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: log-stream-scroll 18s linear infinite;
+  will-change: transform;
+}
+
+.log-scroll-track:hover {
+  animation-play-state: paused;
 }
 
 .log-item-row {
@@ -1672,6 +1692,16 @@ onUnmounted(() => {
   min-height: 120px;
   color: rgba(255, 255, 255, 0.35);
   font-size: 11px;
+}
+
+@keyframes log-stream-scroll {
+  to { transform: translateY(calc(-50% - 4px)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .log-scroll-track {
+    animation: none;
+  }
 }
 
 @keyframes spin {
