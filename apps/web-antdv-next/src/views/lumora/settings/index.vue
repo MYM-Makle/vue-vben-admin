@@ -11,16 +11,23 @@ import {
   Button,
   InputNumber,
   message,
+  Popconfirm,
   Spin,
 } from 'antdv-next';
 
-import { getSettingsApi, updateSettingsApi } from '#/api';
+import {
+  getSettingsApi,
+  revokeLegacyApiKeysApi,
+  updateSettingsApi,
+} from '#/api';
 
 const settings = reactive<SystemSettings>({
   defaultDailyLimit: 10_000,
+  legacyApiKeys: 0,
   registrationCredits: 3000,
 });
 const loading = ref(false);
+const revokingLegacyKeys = ref(false);
 const saving = ref(false);
 const error = ref('');
 const lastSavedTime = ref('2026-07-30 16:30:12');
@@ -55,7 +62,10 @@ async function save() {
   saving.value = true;
   error.value = '';
   try {
-    await updateSettingsApi({ ...settings });
+    await updateSettingsApi({
+      defaultDailyLimit: settings.defaultDailyLimit,
+      registrationCredits: settings.registrationCredits,
+    });
     lastSavedTime.value = getNowString();
     message.success('系统配置已保存');
   } catch (saveError) {
@@ -66,13 +76,28 @@ async function save() {
   }
 }
 
+async function revokeLegacyKeys() {
+  if (revokingLegacyKeys.value || settings.legacyApiKeys === 0) return;
+  revokingLegacyKeys.value = true;
+  error.value = '';
+  try {
+    const result = await revokeLegacyApiKeysApi();
+    settings.legacyApiKeys = Math.max(0, settings.legacyApiKeys - result.revoked);
+    message.success(`已吊销 ${result.revoked} 个遗留 API Key`);
+  } catch (revokeError) {
+    error.value =
+      revokeError instanceof Error ? revokeError.message : '遗留 API Key 吊销失败';
+  } finally {
+    revokingLegacyKeys.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
 <template>
   <Page>
     <div class="max-w-5xl mx-auto py-8 px-6">
-      
       <!-- Premium Settings Header -->
       <div class="flex items-start justify-between gap-6 mb-8 relative pb-6 border-b border-slate-100">
         <div class="flex-1">
@@ -127,7 +152,6 @@ onMounted(load);
       <Spin :spinning="loading">
         <!-- Settings cards grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          
           <!-- Card 1: Registration Credits -->
           <div class="bg-white border border-slate-200/80 border-t-2 border-t-indigo-500 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 p-6 flex flex-col justify-between min-h-[220px]">
             <div>
@@ -193,7 +217,33 @@ onMounted(load);
               </div>
             </div>
           </div>
+        </div>
 
+        <div class="mb-6 flex flex-col gap-4 rounded-lg border border-red-200 bg-red-50/50 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-3">
+            <IconifyIcon icon="lucide:shield-alert" class="size-5 shrink-0 text-red-600" />
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">遗留 API Key</h3>
+              <p class="mt-1 text-xs text-slate-600">
+                当前有 {{ settings.legacyApiKeys }} 个明文历史 Key 仍处于激活状态。
+              </p>
+            </div>
+          </div>
+          <Popconfirm
+            cancel-text="取消"
+            ok-text="确认吊销"
+            title="吊销后不可恢复，确认继续？"
+            @confirm="revokeLegacyKeys"
+          >
+            <Button
+              danger
+              :disabled="settings.legacyApiKeys === 0"
+              :loading="revokingLegacyKeys"
+            >
+              <IconifyIcon icon="lucide:shield-off" class="size-4" />
+              批量吊销
+            </Button>
+          </Popconfirm>
         </div>
 
         <!-- Bottom Scope Info Card -->

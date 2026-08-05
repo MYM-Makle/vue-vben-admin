@@ -71,6 +71,8 @@ function createRequestClient(baseURL: string, options?: RequestClientOptions) {
 
       config.headers.Authorization = formatToken(accessStore.accessToken);
       config.headers['Accept-Language'] = preferences.app.locale;
+      config.headers['X-Lumora-Device-Id'] = 'lumora-admin';
+      config.headers['X-Lumora-Platform'] = 'web-admin';
       return config;
     },
   });
@@ -118,4 +120,12 @@ export const requestClient = createRequestClient(apiURL, {
 export const baseRequestClient = new RequestClient({
   baseURL: apiURL,
   withCredentials: true,
+});
+
+baseRequestClient.addRequestInterceptor({
+  fulfilled: async (config) => {
+    config.headers['X-Lumora-Device-Id'] = 'lumora-admin';
+    config.headers['X-Lumora-Platform'] = 'web-admin';
+    return config;
+  },
 });

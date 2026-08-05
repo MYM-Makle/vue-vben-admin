@@ -79,6 +79,7 @@ export interface IpLocationResult {
 
 export interface SystemSettings {
   defaultDailyLimit: number;
+  legacyApiKeys: number;
   registrationCredits: number;
 }
 
@@ -177,8 +178,16 @@ export function getSettingsApi() {
   return requestClient.get<SystemSettings>('/admin/settings');
 }
 
-export function updateSettingsApi(data: SystemSettings) {
+export function updateSettingsApi(
+  data: Pick<SystemSettings, 'defaultDailyLimit' | 'registrationCredits'>,
+) {
   return requestClient.put<null>('/admin/settings', data);
+}
+
+export function revokeLegacyApiKeysApi() {
+  return requestClient.post<{ revoked: number }>(
+    '/admin/api-keys/revoke-legacy',
+  );
 }
 
 export function getProvidersApi() {
