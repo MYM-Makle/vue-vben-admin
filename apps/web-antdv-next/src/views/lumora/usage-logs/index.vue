@@ -6,8 +6,10 @@ import type { IpLocationResult, UsageLogItem } from '#/api';
 import { ref } from 'vue';
 
 import { Page } from '@vben/common-ui';
+import { IconifyIcon } from '@vben/icons';
 
-import { Alert, Button, Image, Tag } from 'antdv-next';
+import { useClipboard } from '@vueuse/core';
+import { Alert, Button, Image, message, Tag, Tooltip } from 'antdv-next';
 
 import { useVbenVxeGrid } from '#/adapter/vxe-table';
 import { getIpLocationApi, getUsageLogsApi } from '#/api';
@@ -16,6 +18,17 @@ const total = ref(0);
 const error = ref('');
 const ipLocations = ref<Record<string, IpLocationResult>>({});
 const locatingIps = ref<Record<string, boolean>>({});
+const { copy } = useClipboard({ legacy: true });
+
+async function copyPrompt(prompt: string) {
+  try {
+    await copy(prompt);
+    message.success('提示词已复制');
+  } catch (copyError) {
+    error.value =
+      copyError instanceof Error ? copyError.message : '提示词复制失败';
+  }
+}
 
 async function loadIpLocation(ip: string) {
   if (!ip || locatingIps.value[ip]) return;
@@ -25,7 +38,9 @@ async function loadIpLocation(ip: string) {
     ipLocations.value = { ...ipLocations.value, [ip]: result };
   } catch (locationError) {
     error.value =
-      locationError instanceof Error ? locationError.message : 'IP 地区查询失败';
+      locationError instanceof Error
+        ? locationError.message
+        : 'IP 地区查询失败';
   } finally {
     locatingIps.value = { ...locatingIps.value, [ip]: false };
   }
@@ -46,7 +61,7 @@ const formOptions: VbenFormProps = {
       component: 'Input',
       componentProps: {
         allowClear: true,
-        placeholder: '邮箱、IP、设备 ID 或接口',
+        placeholder: '邮箱、IP、设备 ID、接口、提示词或失败原因',
       },
       fieldName: 'q',
       label: '关键词',
@@ -88,6 +103,13 @@ const gridOptions: VxeGridProps<UsageLogItem> = {
       minWidth: 240,
       slots: { default: 'call' },
       title: '调用',
+    },
+    {
+      align: 'left',
+      field: 'prompt',
+      minWidth: 320,
+      slots: { default: 'details' },
+      title: '提示词 / 失败原因',
     },
     {
       field: 'status',
@@ -138,7 +160,7 @@ const gridOptions: VxeGridProps<UsageLogItem> = {
       },
     },
   },
-  rowConfig: { height: 72, keyField: 'id' },
+  rowConfig: { height: 88, keyField: 'id' },
   toolbarConfig: { custom: true, refresh: true, zoom: true },
 };
 
@@ -153,7 +175,9 @@ const [Grid] = useVbenVxeGrid({
     <Alert v-if="error" class="mb-4" :message="error" show-icon type="error" />
     <Grid>
       <template #toolbar-tools>
-        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-purple-700 shadow-sm">
+        <span
+          class="text-xs font-semibold px-3 py-1 rounded-full bg-purple-50 border border-purple-100 text-purple-700 shadow-sm"
+        >
           共 {{ total }} 条接口日志记录
         </span>
       </template>
@@ -168,30 +192,87 @@ const [Grid] = useVbenVxeGrid({
         <span v-else class="text-xs text-slate-300">-</span>
       </template>
       <template #user="{ row }">
-        <div class="font-bold text-slate-800 text-xs font-mono">{{ row.userEmail }}</div>
+        <div class="font-bold text-slate-800 text-xs font-mono">
+          {{ row.userEmail }}
+        </div>
       </template>
       <template #call="{ row }">
-        <div class="font-mono text-indigo-600 font-semibold text-xs">{{ row.endpoint }}</div>
-        <div class="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
-          <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-medium">{{ row.providerName || '默认服务' }}</span>
+        <div class="font-mono text-indigo-600 font-semibold text-xs">
+          {{ row.endpoint }}
+        </div>
+        <div
+          class="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5"
+        >
+          <span
+            class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-medium"
+            >{{ row.providerName || '默认服务' }}</span>
           <span>·</span>
           <span class="text-indigo-700 font-medium">{{ row.model }}</span>
         </div>
       </template>
+      <template #details="{ row }">
+        <div
+          v-if="row.prompt"
+          class="flex items-start gap-1"
+        >
+          <div
+            class="line-clamp-2 min-w-0 text-xs leading-5 text-slate-600"
+            :title="row.prompt"
+          >
+            <span class="mr-1 font-semibold text-slate-400">提示词</span>{{
+              row.prompt
+            }}
+          </div>
+          <Tooltip title="复制提示词">
+            <Button
+              aria-label="复制提示词"
+              class="h-5 w-5 shrink-0 p-0"
+              size="small"
+              type="text"
+              @click="copyPrompt(row.prompt)"
+            >
+              <IconifyIcon class="size-3.5" icon="lucide:copy" />
+            </Button>
+          </Tooltip>
+        </div>
+        <div
+          v-if="row.error"
+          class="line-clamp-2 text-xs leading-5 text-red-600"
+          :title="row.error"
+        >
+          <span class="mr-1 font-semibold text-red-400">失败</span>{{
+            row.error
+          }}
+        </div>
+        <span v-if="!row.prompt && !row.error" class="text-xs text-slate-300">-</span>
+      </template>
       <template #status="{ row }">
-        <Tag :color="row.status === 'success' ? 'success' : 'error'" class="rounded-full px-2 font-bold">
+        <Tag
+          :color="row.status === 'success' ? 'success' : 'error'"
+          class="rounded-full px-2 font-bold"
+        >
           {{ row.status === 'success' ? 'SUCCESS' : 'FAILED' }}
         </Tag>
       </template>
       <template #usage="{ row }">
-        <div class="font-mono text-xs font-bold" :class="row.durationMs > 5000 ? 'text-amber-600' : 'text-emerald-600'">
+        <div
+          class="font-mono text-xs font-bold"
+          :class="row.durationMs > 5000 ? 'text-amber-600' : 'text-emerald-600'"
+        >
           {{ row.durationMs }} ms
         </div>
-        <div class="text-[11px] text-amber-600 font-medium">{{ row.creditsUsed }} 积分</div>
+        <div class="text-[11px] text-amber-600 font-medium">
+          {{ row.creditsUsed }} 积分
+        </div>
       </template>
       <template #network="{ row }">
-        <div class="font-mono text-xs text-slate-700">{{ row.ipAddress || '-' }}</div>
-        <div v-if="ipLocations[row.ipAddress]" class="mt-0.5 text-[11px] text-cyan-700">
+        <div class="font-mono text-xs text-slate-700">
+          {{ row.ipAddress || '-' }}
+        </div>
+        <div
+          v-if="ipLocations[row.ipAddress]"
+          class="mt-0.5 text-[11px] text-cyan-700"
+        >
           {{ ipLocations[row.ipAddress]?.location }}
           <span v-if="ipLocations[row.ipAddress]?.isp" class="text-slate-400">
             · {{ ipLocations[row.ipAddress]?.isp }}

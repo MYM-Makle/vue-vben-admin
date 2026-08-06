@@ -39,6 +39,37 @@ export interface ManagedUser {
   totalCalls: number;
 }
 
+export interface ManagedUserDetail {
+  avatar: string;
+  availableCredits: number;
+  createdAt: string;
+  credits: number;
+  creditsReserved: number;
+  dailyLimit: number;
+  email: string;
+  id: string;
+  isAdmin: boolean;
+  lastLoginAt: null | string;
+  lastSeenAt: null | string;
+  name: string;
+  passwordConfigured: boolean;
+  plan: string;
+  providers: ManagedProvider[];
+  status: 'active' | 'disabled';
+}
+
+export interface ManagedProvider {
+  baseUrl: string;
+  createdAt: string;
+  id: string;
+  isActive: boolean;
+  maskedApiKey: string;
+  model: string;
+  name: string;
+  needsRotation: boolean;
+  source: 'system' | 'user';
+}
+
 export interface CreditLedgerItem {
   balanceAfter: number;
   createdAt: string;
@@ -58,11 +89,13 @@ export interface UsageLogItem {
   deviceId: string;
   durationMs: number;
   endpoint: string;
+  error: string;
   id: string;
   imageUrl: null | string;
   ipAddress: string;
   model: string;
   platform: string;
+  prompt: string;
   providerName: string;
   status: 'error' | 'success';
   userAgent: string;
@@ -129,6 +162,12 @@ export function getUsersApi(params: {
   });
 }
 
+export function getUserDetailApi(id: string) {
+  return requestClient.get<ManagedUserDetail>(
+    `/admin/users/${encodeURIComponent(id)}`,
+  );
+}
+
 export function updateUserApi(
   id: string,
   data: Pick<ManagedUser, 'dailyLimit' | 'isAdmin' | 'plan' | 'status'>,
@@ -142,6 +181,18 @@ export function adjustCreditsApi(
 ) {
   return requestClient.post<{ credits: number }>(
     `/admin/users/${encodeURIComponent(id)}/credits`,
+    data,
+  );
+}
+
+export function bulkSetCreditsApi(data: {
+  credits: number;
+  reason: string;
+  requestId: string;
+  userIds: string[];
+}) {
+  return requestClient.post<{ credits: number; updated: number }>(
+    '/admin/users/credits/bulk',
     data,
   );
 }
